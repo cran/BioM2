@@ -10,12 +10,19 @@ VisMulti(
   ShowModule_obj = NULL,
   PathwaysModule_obj = NULL,
   exact = TRUE,
+  type_text_table = FALSE,
+  text_table_theme = ttheme("mOrange"),
   n_neighbors = 8,
   min_dist = 2,
-  size = 5,
   target_weight = 0.5,
-  width = 13,
-  height = 10
+  size = 1.5,
+  alpha = 1,
+  ellipse = TRUE,
+  ellipse.alpha = 0.2,
+  theme = ggthemes::theme_base(base_family = "serif"),
+  save_pdf = FALSE,
+  width = 7,
+  height = 7
 )
 }
 \arguments{
@@ -29,6 +36,10 @@ VisMulti(
 
 \item{exact}{Whether to divide GO pathways more accurately}
 
+\item{type_text_table}{Whether to display it in a table}
+
+\item{text_table_theme}{The topic of this table.Detail for ggtexttable()}
+
 \item{n_neighbors}{The size of local neighborhood (in terms of number of neighboring sample points) used for manifold approximation.
 Larger values result in more global views of the manifold, while smaller values result in more local data being preserved.
 In general values should be in the range 2 to 100.}
@@ -39,12 +50,22 @@ while larger values will result on a more even dispersal of points.
 The value should be set relative to the spread value,
 which determines the scale at which embedded points will be spread out.}
 
-\item{size}{Scatter plot point size}
-
 \item{target_weight}{Weighting factor between data topology and target topology.
 A value of 0.0 weights entirely on data, a value of 1.0 weights entirely on target.
 The default of 0.5 balances the weighting equally between data and target.
 Only applies if y is non-NULL.}
+
+\item{size}{Scatter plot point size}
+
+\item{alpha}{Alpha for ellipse specifying the transparency level of fill color. Use alpha = 0 for no fill color.}
+
+\item{ellipse}{logical value. If TRUE, draws ellipses around points.}
+
+\item{ellipse.alpha}{Alpha for ellipse specifying the transparency level of fill color. Use alpha = 0 for no fill color.}
+
+\item{theme}{Default:theme_base(base_family = "serif")}
+
+\item{save_pdf}{Whether to save images in PDF format}
 
 \item{width}{image width}
 

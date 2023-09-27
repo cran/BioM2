@@ -534,7 +534,7 @@ BioM2=function(TrainData=NULL,TestData=NULL,pathlistDB=NULL,FeatureAnno=NULL,res
                 Stage1_FeartureSelection_Method='cor',cutoff=0.3,
                 Stage2_FeartureSelection_Method='RemoveHighcor',cutoff2=0.85,classifier2=NULL,
                 target='predict',p.adjust.method='fdr',save_pathways_matrix=FALSE,cores=1,verbose=TRUE){
-  if(verbose)print('===================BioMLF==================')
+  if(verbose)print('===================BioM2==================')
 
   if(Sys.info()[1]=="Windows"){
     cores=1
@@ -1159,6 +1159,8 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE){
 #' @param ShowModule_obj Results produced by ShowModule()
 #' @param PathwaysModule_obj Results produced by PathwaysModule()
 #' @param exact Whether to divide GO pathways more accurately
+#' @param type_text_table Whether to display it in a table
+#' @param text_table_theme The topic of this table.Detail for ggtexttable()
 #' @param n_neighbors The size of local neighborhood (in terms of number of neighboring sample points) used for manifold approximation.
 #' Larger values result in more global views of the manifold, while smaller values result in more local data being preserved.
 #' In general values should be in the range 2 to 100.
@@ -1172,8 +1174,13 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE){
 #' A value of 0.0 weights entirely on data, a value of 1.0 weights entirely on target.
 #' The default of 0.5 balances the weighting equally between data and target.
 #' Only applies if y is non-NULL.
+#' @param alpha Alpha for ellipse specifying the transparency level of fill color. Use alpha = 0 for no fill color.
+#' @param ellipse logical value. If TRUE, draws ellipses around points.
+#' @param ellipse.alpha Alpha for ellipse specifying the transparency level of fill color. Use alpha = 0 for no fill color.
+#' @param theme  Default:theme_base(base_family = "serif")
 #' @param width  image width
 #' @param height image height
+#' @param save_pdf Whether to save images in PDF format
 #'
 #' @return a pdf file
 #' @export
@@ -1187,13 +1194,16 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE){
 #' @import uwot
 #' @import webshot
 #' @import wordcloud2
+#' @import ggpubr
+#' @import ggthemes
 #' @importFrom utils data
 #' @importFrom  stats aggregate quantile
 #'
-
-
 VisMulti=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModule_obj=NULL,PathwaysModule_obj=NULL,exact=TRUE,
-                  n_neighbors = 8, min_dist =2,size=5,target_weight = 0.5,width =13, height=10 ){
+                  type_text_table=FALSE,text_table_theme=ttheme('mOrange'),
+                  n_neighbors = 8, min_dist =2,target_weight = 0.5,
+                  size=1.5,alpha=1,ellipse=TRUE,ellipse.alpha=0.2,theme=ggthemes::theme_base(base_family = "serif"),
+                  save_pdf=FALSE,width =7, height=7){
   if(!is.null(BioM2_pathways_obj)){
     if(exact==FALSE){
       GO_Ancestor=NA
@@ -1204,93 +1214,138 @@ VisMulti=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModule_obj
       data("GO_Ancestor_exact",envir = environment())
       anno=GO_Ancestor_exact
     }
-    pathways=BioM2_pathways_obj$PathwaysResult[,c('id','p.value')]
-    colnames(pathways)=c('SNP','pvalue')
-    new_anno=anno[anno$GO %in% pathways$SNP,]
-    tb=table(new_anno$Ancestor)
-    if(length(which(tb>20))>10){
-      Names= names(tb[order(tb,decreasing=T)[1:8]])
+    if(type_text_table){
+      Result=BioM2_pathways_obj$PathwaysResult
+      Result=Result[1:10,]
+      colnames(Result)=c('ID','Correlation','Pvalue','P-adjusted','Description')
+      pic=ggtexttable(Result, rows = NULL,theme=text_table_theme)
+      if(save_pdf){
+        pic
+        ggsave('PathwaysResult_Table.pdf',width =width, height =height)
+        return(pic)
+      }else{
+        pic
+        return(pic)
+      }
+    }else{
+      pathways=BioM2_pathways_obj$PathwaysResult[,c('id','p.value')]
+      colnames(pathways)=c('SNP','pvalue')
+      new_anno=anno[anno$GO %in% pathways$SNP,]
+      tb=table(new_anno$Ancestor)
+      if(length(which(tb>20))>10){
+        Names= names(tb[order(tb,decreasing=T)[1:8]])
 
-    }else{
-      Names=names(which(table(new_anno$Ancestor)>20))
-    }
-    new_anno=new_anno[which(new_anno$Ancestor %in% Names),]
-    new_anno=new_anno[,c('GO','Ancestor')]
-    colnames(new_anno)=c('SNP','Chromosome')
-    Anno=merge(new_anno,pathways)
-    a=names(which(table(Anno$Chromosome)>250))
-    a2=names(which(table(Anno$Chromosome)<250))
-    if(length(a)==0){
-      Anno=Anno[Anno$Chromosome %in% a2,]
-    }else{
+      }else{
+        Names=names(which(table(new_anno$Ancestor)>20))
+      }
+      new_anno=new_anno[which(new_anno$Ancestor %in% Names),]
+      new_anno=new_anno[,c('GO','Ancestor')]
+      colnames(new_anno)=c('SNP','Chromosome')
+      Anno=merge(new_anno,pathways)
+      a=names(which(table(Anno$Chromosome)>250))
       a2=names(which(table(Anno$Chromosome)<250))
-      A=lapply(1:length(a),function(x){
-        Anno2=Anno[Anno$Chromosome %in% a[x],]
-        c1<- quantile(Anno2$pvalue, probs = 0.03)
-        Anno3=Anno2[Anno2$pvalue < c1 ,]
-        Anno4=Anno2[Anno2$pvalue > c1 ,]
-        Anno4=Anno4[sample(1:nrow(Anno4),150,replace = F),]
-        o=rbind(Anno3,Anno4)
-      })
-      A=do.call(rbind,A)
-      A2=Anno[Anno$Chromosome %in% a2,]
-      Anno=rbind(A,A2)
+      if(length(a)==0){
+        Anno=Anno[Anno$Chromosome %in% a2,]
+      }else{
+        a2=names(which(table(Anno$Chromosome)<250))
+        A=lapply(1:length(a),function(x){
+          Anno2=Anno[Anno$Chromosome %in% a[x],]
+          c1<- quantile(Anno2$pvalue, probs = 0.03)
+          Anno3=Anno2[Anno2$pvalue < c1 ,]
+          Anno4=Anno2[Anno2$pvalue > c1 ,]
+          Anno4=Anno4[sample(1:nrow(Anno4),150,replace = F),]
+          o=rbind(Anno3,Anno4)
+        })
+        A=do.call(rbind,A)
+        A2=Anno[Anno$Chromosome %in% a2,]
+        Anno=rbind(A,A2)
+      }
+
+      Anno$Position=sample(1:100000,nrow(Anno))
+      Anno=Anno[,c(1,2,4,3)]
+      if(save_pdf){
+        pic=CMplot(Anno,plot.type="c",
+                   threshold=c(0.001,0.05)/nrow(pathways),threshold.col=c('red','orange'),
+                   multracks=FALSE, chr.den.col=NULL,H=2,axis.cex=1.5,file.output=T,
+                   file='pdf',height=height, width=width)
+        return(pic)
+
+      }else{
+        pic=CMplot(Anno,plot.type="c",
+                   threshold=c(0.001,0.05)/nrow(pathways),threshold.col=c('red','orange'),
+                   multracks=FALSE, chr.den.col=NULL,H=2,axis.cex=1.5,file.output=F)
+        return(pic)
+      }
     }
 
-    Anno$Position=sample(1:100000,nrow(Anno))
-    Anno=Anno[,c(1,2,4,3)]
-    CMplot(Anno,plot.type="c",
-           threshold=c(0.001,0.05)/nrow(pathways),threshold.col=c('red','orange'),
-           multracks=FALSE, chr.den.col=NULL, file.output=T,
-           file='pdf',height=height, width=width)
 
   }
   if(!is.null(FindParaModule_obj)){
-    result=FindParaModule_obj$TotalResult
-    d=aggregate(result$Mean_Fraction,by=list(minModuleSize=result$minModuleSize),max)
-    colnames(d)[2]='Mean_Fraction'
-    Mean_Fraction=NA
-    mergeCutHeight=NA
-    minModuleSize=NA
-    ggplot(d, aes(y = Mean_Fraction, x = minModuleSize,colors='red')) +
-      geom_line(group = 1,position = position_dodge(0.1),cex=1.3) +
-      geom_point(size=3) +
-      labs(y='Mean_Fraction',x='minModuleSize')+
-      theme_test(base_size = 20)+
-      theme(legend.title = element_blank(),
-            legend.text = element_text(family = 'serif'),
-            legend.position = c(.2,.9),
-            legend.direction = "horizontal",
-            axis.text = element_text(color = 'black',family = 'serif'),
-            axis.title = element_text(family = 'serif',size = 18,color = 'black')
-      )
-    ggsave('minModuleSize.pdf')
-    best_minModuleSize=d[which.max(d$Mean_Fraction),]$minModuleSize
-    size=result[result$minModuleSize==best_minModuleSize,]
+    if(type_text_table){
+      Result=FindParaModule_obj$TotalResult
+      Result[,3:5]=round(Result[,3:5],2)
+      pic=ggtexttable(Result, rows = NULL, theme=text_table_theme)
+      if(save_pdf){
+        pic
+        ggsave('ParameterSelection_Table.pdf',width =width, height =height)
+        return(pic)
+      }else{
+        pic
+        return(pic)
+      }
+    }else{
+      cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
+               [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
+      result=FindParaModule_obj$TotalResult
+      result$minModuleSize=as.character(result$minModuleSize)
+      pic=ggpubr::ggline(result,
+                         size=size,
+                         x = "mergeCutHeight",
+                         y = "Mean_Fraction",
+                         linetype = "minModuleSize",
+                         shape = "minModuleSize",
+                         color = "minModuleSize",
+                         title = "Parameter Selection",
+                         xlab = "mergeCutHeight",
+                         ylab = "Mean_Fraction",
+                         palette = cols)+theme
+      if(save_pdf){
+        pic
+        ggsave('ParameterSelection.pdf',width =width, height =height)
+        return(pic)
+      }else{
+        pic
+        return(pic)
+      }
 
-    ggplot(size, aes(y = Mean_Fraction, x = mergeCutHeight,colors='red')) +
-      geom_line(group = 1,position = position_dodge(0.1),cex=1.3) +
-      geom_point(size=3) +
-      labs(y='Mean_Fraction',x='mergeCutHeight',title=paste0('minModuleSize: ',best_minModuleSize))+
-      theme_test(base_size = 20)+
-      theme(legend.title = element_blank(),
-            legend.text = element_text(family = 'serif'),
-            legend.position = c(.2,.9),
-            legend.direction = "horizontal",
-            axis.text = element_text(color = 'black',family = 'serif'),
-            axis.title = element_text(family = 'serif',size = 18,color = 'black')
-      )
-    ggsave('mergeCutHeight.pdf')
+    }
+
   }
   if(!is.null(ShowModule_obj)){
-    requireNamespace("htmlwidgets")
-    requireNamespace("jiebaR")
-    requireNamespace("tm")
-    requireNamespace("webshot")
-    requireNamespace("wordcloud2")
-    NAME=names(ShowModule_obj)
-    output=paste0(NAME,'_WordCloud.pdf')
-    p<-"
+    if(type_text_table){
+      NAME=names(ShowModule_obj)
+      output=paste0(NAME,'_Table.pdf')
+      p<-"
+      Result=ShowModule_obj[[xxx]]
+      colnames(Result)=c('GO','Description','Ancestor','AncestorGO')
+      pic=ggtexttable(Result, rows = NULL, theme=text_table_theme)
+      if(save_pdf){
+         pic
+         ggsave(output[xxx],width =width, height =height)
+         return(pic)
+      }else{
+        pic
+        return(pic)
+      }
+     "
+      y=sapply(1:length(NAME),function(x) gsub('xxx',x,p))
+      pic=eval(parse(text =y))
+      return(pic)
+
+    }else{
+      NAME=names(ShowModule_obj)
+      output=paste0(NAME,'_WordCloud.pdf')
+      p<-"
     words=ShowModule_obj[[NAME[xxx]]]$Name
     engine <- worker()
     segment <- segment(words, engine)
@@ -1300,53 +1355,85 @@ VisMulti=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModule_obj
     rm=c('of','in','by','for','via','process','regulation','lengthening')
     wordf=wordf[-which(wordf$char %in% rm),]
     my_graph <-wordcloud2(wordf,shape = 'circle')
-    saveWidget(my_graph,'tmp.html',selfcontained = F)
-    webshot('tmp.html',output[xxx], delay =5, vwidth = 1024, vheight=1024)
+    if(save_pdf){
+      my_graph
+      saveWidget(my_graph,'tmp.html',selfcontained = F)
+      webshot('tmp.html',output[xxx], delay =5, vwidth = 1024, vheight=1024)
+      return(my_graph)
+    }else{
+      my_graph
+      return(my_graph)
+    }
     "
-    y=sapply(1:length(NAME),function(x) gsub('xxx',x,p))
-    eval(parse(text =y))
-
+      y=sapply(1:length(NAME),function(x) gsub('xxx',x,p))
+      pic=eval(parse(text =y))
+      return(pic)
+    }
 
   }
   if(!is.null(PathwaysModule_obj)){
-    cluster=PathwaysModule_obj$ModuleResult
-    cluster$cluster=paste0('ME',cluster$cluster)
-    Result=PathwaysModule_obj$DE_PathwaysModule
-    meta=cluster[cluster$cluster %in% Result$module,]
-    data=as.data.frame(PathwaysModule_obj$Matrix)
-    pdata=data[,meta$ID]
+    if(type_text_table){
+      Result=PathwaysModule_obj$DE_PathwaysModule
+      Result$Fraction=round(Result$Fraction,2)
+      Result$cor=round(Result$cor,2)
+      colnames(Result)=c('Modules','Num_Pathways','Fraction','P-adjusted','Correlation')
+      pic=ggtexttable(Result, rows = NULL, theme=text_table_theme)
+      if(save_pdf){
+        pic
+        ggsave('PathwaysModule_Table.pdf',width =width, height =height)
+        return(pic)
+      }else{
+        pic
+        return(pic)
+      }
 
-    test=as.data.frame(t(pdata))
-    test$ID=rownames(test)
-    test=merge(test,meta,by='ID')
-    rownames(test)=test$ID
-    test=test[,-1]
-    test$cluster=as.factor(test$cluster)
-    test_umap <- uwot::umap(test, n_neighbors = n_neighbors, min_dist = min_dist,
-                            y = test$cluster, target_weight = target_weight)
-    test_umap <- as.data.frame(test_umap)
-    test_umap$cluster=test$cluster
-    cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
-             [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
-    V1=NA
-    V2=NA
-    ggplot(test_umap,aes(V1,V2,group=cluster)) +
-      geom_point(size=5,aes(color=cluster)) + theme_bw() +
+    }else{
+      cluster=PathwaysModule_obj$ModuleResult
+      cluster$cluster=paste0('ME',cluster$cluster)
+      Result=PathwaysModule_obj$DE_PathwaysModule
+      meta=cluster[cluster$cluster %in% Result$module,]
+      data=as.data.frame(PathwaysModule_obj$Matrix)
+      pdata=data[,meta$ID]
 
-      theme(plot.title = element_text(hjust = 0.5)) +
-      labs(x="UMAP_1",y="UMAP_2",
-           title = "A UMAP visualization ")+scale_color_manual(values=cols)+
-      theme_test(base_size = 20)+
-      theme(legend.title = element_blank(),
-            legend.text = element_text(family = 'serif'),
-            #legend.position = c(.2,.9),
-            legend.direction = "horizontal",
-            axis.text = element_text(color = 'black',family = 'serif'),
-            axis.title = element_text(family = 'serif',size = 18,color = 'black')
-      )
-    ggsave('PathwaysModule_UMAP.pdf',width =width, height =height)
+      test=as.data.frame(t(pdata))
+      test$ID=rownames(test)
+      test=merge(test,meta,by='ID')
+      rownames(test)=test$ID
+      test=test[,-1]
+      test$cluster=as.factor(test$cluster)
+      test_umap <- uwot::umap(test, n_neighbors = n_neighbors, min_dist = min_dist,
+                              y = test$cluster, target_weight = target_weight)
+      test_umap <- as.data.frame(test_umap)
+      test_umap$Modules=test$cluster
+      cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
+               [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
+      pic=ggpubr::ggscatter(test_umap,
+                            x='V1',
+                            y='V2',
+                            size = size,
+                            title ="Highly Biologically Explainable Differential Module",
+                            subtitle="A UMAP visualization",
+                            color = "Modules",
+                            alpha = alpha,
+                            ellipse = ellipse,
+                            ellipse.alpha=ellipse.alpha,
+                            ellipse.type="norm",
+                            palette =cols,
+                            xlab = "UMAP_1",
+                            ylab = "UMAP_2",
+      )+theme
+      if(save_pdf){
+        pic
+        ggsave('PathwaysModule_UMAP.pdf',width =width, height =height)
+        return(pic)
+      }else{
+        pic
+        return(pic)
+      }
+    }
   }
 }
+
 
 
 
