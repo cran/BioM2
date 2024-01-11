@@ -10,7 +10,9 @@ PlotPathInner(
   FeatureAnno = NULL,
   PathNames = NULL,
   p.adjust.method = "none",
-  save_pdf = FALSE
+  save_pdf = FALSE,
+  alpha = 1,
+  cols = NULL
 )
 }
 \arguments{
@@ -29,6 +31,10 @@ It must have at least two columns named 'ID' and 'entrezID'.
 "bonferroni", "BH", "BY","fdr","none")}
 
 \item{save_pdf}{Whether to save images in PDF format}
+
+\item{alpha}{The alpha transparency, a number in (0,1).}
+
+\item{cols}{palette (vector of colour names)}
 }
 \value{
 a plot object

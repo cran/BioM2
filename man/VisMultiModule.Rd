@@ -15,6 +15,7 @@ VisMultiModule(
   volin = FALSE,
   control_label = 0,
   module = NULL,
+  cols = NULL,
   n_neighbors = 8,
   spread = 1,
   min_dist = 2,
@@ -49,6 +50,8 @@ VisMultiModule(
 \item{control_label}{Can only be used when PathwaysModule_obj exists. ( Control group label )}
 
 \item{module}{Can only be used when PathwaysModule_obj exists.( PathwaysModule ID )}
+
+\item{cols}{palette (vector of colour names)}
 
 \item{n_neighbors}{The size of local neighborhood (in terms of number of neighboring sample points) used for manifold approximation.
 Larger values result in more global views of the manifold, while smaller values result in more local data being preserved.

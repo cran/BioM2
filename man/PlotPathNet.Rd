@@ -9,9 +9,11 @@ PlotPathNet(
   FeatureAnno = NULL,
   pathlistDB = NULL,
   PathNames = NULL,
+  alpha = 1,
   cutoff = 0.2,
   num = 20,
-  com_top = 10
+  com_top = 10,
+  cols = NULL
 )
 }
 \arguments{
@@ -26,11 +28,15 @@ For details, please refer to ( data("GO2ALLEGS_BP") )}
 
 \item{PathNames}{A vector.A vector containing the names of pathways}
 
+\item{alpha}{The alpha transparency, a number in (0,1).}
+
 \item{cutoff}{Threshold for correlation between features within a pathway}
 
 \item{num}{The first few internal features of each pathway that are most relevant to the phenotype}
 
 \item{com_top}{Top correlations of common characteristics of pathways}
+
+\item{cols}{palette (vector of colour names)}
 }
 \value{
 a ggplot object

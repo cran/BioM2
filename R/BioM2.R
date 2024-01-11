@@ -17,7 +17,7 @@
 #'
 #' @return The predicted output for the test data.
 #' @import mlr3verse
-#' @importFrom mlr3 as_task_classif lrn rsmp msr resample
+#' @importFrom mlr3 as_task_classif lrn rsmp msr resample as_task_regr
 #' @export
 #' @author Shunjie Zhang
 #' @examples
@@ -71,6 +71,31 @@ baseModel=function ( trainData, testData, predMode = "probability",
         predict=model$predict(testData)$prob[,2]
         return(predict)
       }
+    }else if( predMode == 'regression'){
+      classifier=paste0('regr.',classifier,'')
+      trainData[,1]=as.numeric(trainData[,1])
+      testData[,1]=as.numeric(testData[,1])
+      trainData=as_task_regr(trainData,target='label')
+      testData=as_task_regr(testData,target='label')
+      model=lrn(classifier)
+      if(!is.null(paramlist)){
+        at = auto_tuner(
+          tuner = tnr("grid_search", resolution = 5, batch_size = 5),
+          learner =  model,
+          search_space = paramlist,
+          resampling = rsmp("cv", folds =5),
+          measure = msr("regr.mae")
+        )
+        at$train(trainData)
+        model$param_set$values = at$tuning_result$learner_param_vals[[1]]
+        model$train(trainData)
+        predict=model$predict(testData)$response
+        return(predict)
+      }else{
+        model$train(trainData)
+        predict=model$predict(testData)$response
+        return(predict)
+      }
     }
   }
   else if(is.null(testData)){
@@ -89,6 +114,18 @@ baseModel=function ( trainData, testData, predMode = "probability",
       re=as.data.frame(as.data.table(rr))[,c(1,5)]
       re=re[order(re$row_ids),][,2]
       return(re)
+    }else if(predMode == 'regression'){
+      classifier=paste0('regr.',classifier,'')
+      trainData=as_task_regr(trainData,target='label')
+      model=lrn(classifier)
+      #set.seed(seed)
+      sink(nullfile())
+      rr=resample(trainData, model, rsmp("cv", folds = inner_folds))$prediction()
+      sink()
+      re=as.data.frame(as.data.table(rr))[,c(1,3)]
+      re=re[order(re$row_ids),][,2]
+      return(re)
+
     }
   }
 }
@@ -683,7 +720,7 @@ BioM2=function(TrainData=NULL,TestData=NULL,pathlistDB=NULL,FeatureAnno=NULL,res
                                         label=NULL,cutoff=cutoff2,preMode='probability',classifier =classifier,cores=cores)
           matrix_pathways=do.call(rbind,list_pathways)
           matrix_pathways=matrix_pathways[,c(1,index)]
-
+          rownames(matrix_pathways)=rownames(TrainData)[unlist(Resampling)]
           if(save_pathways_matrix==TRUE){
             saveRDS(matrix_pathways,'pathways_matrix.rds')
             if(verbose)print('     |||==>>> Save the Pathways-Matrix ')
@@ -768,6 +805,7 @@ BioM2=function(TrainData=NULL,TestData=NULL,pathlistDB=NULL,FeatureAnno=NULL,res
       colnames(newtest)=names(testDataList)
       newtest=cbind(label=testDataList[[1]]$label,newtest)
       matrix_pathways=newtest
+      rownames(matrix_pathways)=rownames(TestData)
       if(verbose)print(paste0('     |>min correlation of pathways=====>>>',round(min(corr),digits = 3),'......','max correlation of pathways===>>>',round(max(corr),digits = 3)))
       if(verbose)print('     <<< PredictPathways Done! >>>     ')
       if(save_pathways_matrix==TRUE){
@@ -845,7 +883,7 @@ BioM2=function(TrainData=NULL,TestData=NULL,pathlistDB=NULL,FeatureAnno=NULL,res
       pre=as.factor(pre)
       Record[1,3]=confusionMatrix(pre, testDataY)$overall['Accuracy'][[1]]
       if(verbose)print(paste0('######~~~~',classifier2,'==>','AUC:',round(Record[1,2],digits = 3),' ','ACC:',round(Record[1,3],digits = 3),' ','PCCs:',round(Record[1,4],digits = 3)))
-      final=list('Prediction'=prediction,'Metric'=Record)
+      final=list('Prediction'=predict,'Metric'=Record)
       T2=Sys.time()
       if(verbose)print(T2-T1)
       if(verbose)print('######-------  Well Done!!!-------######')
@@ -1185,13 +1223,14 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE){
 #' @param volin Can only be used when PathwaysModule_obj exists. ( Violin diagram )
 #' @param control_label Can only be used when PathwaysModule_obj exists. ( Control group label )
 #' @param module Can only be used when PathwaysModule_obj exists.( PathwaysModule ID )
+#' @param cols palette (vector of colour names)
 #'
 #' @return a ggplot2 object
 #' @export
 #' @import ggplot2
 #' @import htmlwidgets
 #' @import jiebaR
-#' @import RColorBrewer
+#' @import ggsci
 #' @import CMplot
 #' @import uwot
 #' @import webshot
@@ -1204,12 +1243,13 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE){
 #'
 VisMultiModule=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModule_obj=NULL,PathwaysModule_obj=NULL,exact=TRUE,
                   type_text_table=FALSE,text_table_theme=ttheme('mOrange'),
-                  volin=FALSE,control_label=0,module=NULL,
+                  volin=FALSE,control_label=0,module=NULL,cols=NULL,
                   n_neighbors = 8,spread=1,min_dist =2,target_weight = 0.5,
                   size=1.5,alpha=1,ellipse=TRUE,ellipse.alpha=0.2,theme=ggthemes::theme_base(base_family = "serif"),
                   save_pdf=FALSE,width =7, height=7){
-  cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
-           [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
+  if(is.null(cols)){
+    cols = pal_d3("category20",alpha=alpha)(20)
+  }
   if(!is.null(BioM2_pathways_obj)){
     if(exact==FALSE){
       GO_Ancestor=NA
@@ -1458,8 +1498,8 @@ VisMultiModule=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModu
       cluster=PathwaysModule_obj$ModuleResult
       cluster$cluster=paste0('ME',cluster$cluster)
       Result=PathwaysModule_obj$DE_PathwaysModule
-      if(nrow(Result)>20){
-        Result=Result[1:20,]
+      if(nrow(Result)>10){
+        Result=Result[1:10,]
       }
       meta=cluster[cluster$cluster %in% Result$module,]
       data=as.data.frame(PathwaysModule_obj$Matrix)
@@ -1475,8 +1515,6 @@ VisMultiModule=function(BioM2_pathways_obj=NULL,FindParaModule_obj=NULL,ShowModu
                               y = test$cluster, target_weight = target_weight)
       test_umap <- as.data.frame(test_umap)
       test_umap$Modules=test$cluster
-      cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
-               [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
       pic=ggpubr::ggscatter(test_umap,
                             x='V1',
                             y='V2',
@@ -1608,18 +1646,22 @@ PlotPathFearture=function(BioM2_pathways_obj=NULL,pathlistDB=NULL,top=10,p.adjus
 #' @param p.adjust.method p-value adjustment method.(holm", "hochberg", "hommel",
 #' "bonferroni", "BH", "BY","fdr","none")
 #' @param save_pdf Whether to save images in PDF format
+#' @param alpha The alpha transparency, a number in (0,1).
+#' @param cols palette (vector of colour names)
 #'
 #' @return a plot object
 #' @export
 #' @import ggplot2
 #' @import CMplot
-#' @import RColorBrewer
+#' @import ggsci
 #' @importFrom stats p.adjust
 
-PlotPathInner=function(data=NULL,pathlistDB=NULL,FeatureAnno=NULL,PathNames=NULL,p.adjust.method='none',save_pdf=FALSE){
+PlotPathInner=function(data=NULL,pathlistDB=NULL,FeatureAnno=NULL,PathNames=NULL,
+                       p.adjust.method='none',save_pdf=FALSE,alpha=1,cols=NULL){
   Result=list()
-  cols = c(brewer.pal(9, "Set1"),brewer.pal(8,"Set2")[1:8],brewer.pal(12,"Paired")
-           [1:12],brewer.pal(8,"Dark2")[1:8],brewer.pal(8,"Accent"))
+  if(is.null(cols)){
+    cols = pal_d3("category20",alpha=alpha)(20)
+  }
   featureAnno=FeatureAnno[FeatureAnno$ID %in% colnames(data),]
   for(i in 1:length(PathNames)){
     cpg_id=featureAnno$ID[which(featureAnno$entrezID %in% pathlistDB[[PathNames[i]]])]
@@ -1723,6 +1765,8 @@ PlotCorModule=function(PathwaysModule_obj=NULL,
 #' @param cutoff Threshold for correlation between features within a pathway
 #' @param num    The first few internal features of each pathway that are most relevant to the phenotype
 #' @param com_top Top correlations of common characteristics of pathways
+#' @param alpha The alpha transparency, a number in (0,1).
+#' @param cols palette (vector of colour names)
 #'
 #' @return a ggplot object
 #' @export
@@ -1730,12 +1774,15 @@ PlotCorModule=function(PathwaysModule_obj=NULL,
 #' @import ggnetwork
 #' @import igraph
 #' @import intergraph
-#'
+#' @import ggsci
 #'
 #'
 
-PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,
-                     cutoff=0.2,num=20,com_top=10){
+PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,alpha=1,
+                     cutoff=0.2,num=20,com_top=10,cols=NULL){
+  if(is.null(cols)){
+    cols = pal_d3("category20",alpha=alpha)(20)
+  }
   featureAnno=FeatureAnno[FeatureAnno$ID %in% colnames(data),]
   sub=list()
   i=1
@@ -1828,7 +1875,7 @@ PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,
                size = 8,
                alpha=0.5) +
     scale_color_brewer("Pathways",
-                       palette = "Paired") +
+                       palette = 'Paired') +
     scale_linetype_manual(values = c(2,1)) +
     guides(linetype =  "none") +
     theme_blank()+
