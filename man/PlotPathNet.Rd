@@ -6,18 +6,18 @@
 \usage{
 PlotPathNet(
   data = NULL,
+  BioM2_pathways_obj = NULL,
   FeatureAnno = NULL,
   pathlistDB = NULL,
   PathNames = NULL,
-  alpha = 1,
   cutoff = 0.2,
-  num = 20,
-  com_top = 10,
-  cols = NULL
+  num = 20
 )
 }
 \arguments{
 \item{data}{The input omics data}
+
+\item{BioM2_pathways_obj}{Results produced by BioM2()}
 
 \item{FeatureAnno}{The annotation data stored in a data.frame for probe mapping.
 It must have at least two columns named 'ID' and 'entrezID'.
@@ -28,15 +28,9 @@ For details, please refer to ( data("GO2ALLEGS_BP") )}
 
 \item{PathNames}{A vector.A vector containing the names of pathways}
 
-\item{alpha}{The alpha transparency, a number in (0,1).}
-
 \item{cutoff}{Threshold for correlation between features within a pathway}
 
 \item{num}{The first few internal features of each pathway that are most relevant to the phenotype}
-
-\item{com_top}{Top correlations of common characteristics of pathways}
-
-\item{cols}{palette (vector of colour names)}
 }
 \value{
 a ggplot object

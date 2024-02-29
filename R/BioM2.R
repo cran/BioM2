@@ -1764,25 +1764,19 @@ PlotCorModule=function(PathwaysModule_obj=NULL,
 #' @param PathNames A vector.A vector containing the names of pathways
 #' @param cutoff Threshold for correlation between features within a pathway
 #' @param num    The first few internal features of each pathway that are most relevant to the phenotype
-#' @param com_top Top correlations of common characteristics of pathways
-#' @param alpha The alpha transparency, a number in (0,1).
-#' @param cols palette (vector of colour names)
+#' @param BioM2_pathways_obj Results produced by BioM2()
 #'
 #' @return a ggplot object
 #' @export
 #' @import ggplot2
 #' @import ggnetwork
 #' @import igraph
-#' @import intergraph
 #' @import ggsci
-#'
+#' @import ggforce
 #'
 
-PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,alpha=1,
-                     cutoff=0.2,num=20,com_top=10,cols=NULL){
-  if(is.null(cols)){
-    cols = pal_d3("category20",alpha=alpha)(20)
-  }
+PlotPathNet=function(data=NULL,BioM2_pathways_obj=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,
+                     cutoff=0.2,num=20){
   featureAnno=FeatureAnno[FeatureAnno$ID %in% colnames(data),]
   sub=list()
   i=1
@@ -1792,17 +1786,10 @@ PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,a
     COR=stats::cor(cpg_data$label,cpg_data[,-1])
     COR=ifelse(COR>0,COR,-COR)
     names(COR)=cpg_id
-    num2=length(COR)
-    if(num2>num){
-      n=names(COR)[order(COR,decreasing = T)][1:num]
-    }else{
-      n=names(COR)[order(COR,decreasing = T)][1:num2]
-    }
+    n=names(COR)[order(COR,decreasing = T)][1:num]
     sub[[i]]=data[,n]
     names(sub)[i]=PathNames[i]
   }
-  x=NA
-  y=NA
   result=list()
   a=lapply(1:length(PathNames), function(x){
     data.frame(
@@ -1810,13 +1797,15 @@ PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,a
       value=rep(names(sub)[x],length(sub[[x]]))
     )
   })
-  xend=NA
-  yend=NA
   result$vertices=do.call(rbind,a)
   comid=unique(result$vertices$label[duplicated(result$vertices$label)])
   result$vertices=result$vertices[!duplicated(result$vertices$label),]
   rownames(result$vertices)=result$vertices$label
   nonid=setdiff(result$vertices$label,comid)
+  x=NA
+  y=NA
+  xend=NA
+  yend=NA
   same.conf=NA
   conf=NA
   names(sub)=NULL
@@ -1842,37 +1831,57 @@ PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,a
   }
   df$Correlation=ifelse(df$Correlation>0,df$Correlation,-df$Correlation)
   df=df[df$Correlation>0,]
-
+  
   DF=df[df$Correlation> cutoff,]
   DF$same.conf=ifelse(result$vertices[DF$from,"value"]==result$vertices[DF$to,"value"],1,0)
   DF1=DF[DF$same.conf==1,]
-  DF0=DF[DF$same.conf==0,]
-  DF0=DF0[DF0$from %in% comid | DF0$to %in% comid,]
-  DF0=DF0[order(DF0$Correlation,decreasing = T),]
-  if(is.null(com_top)){
-    DF=rbind(DF1,DF0)
-  }else{
-    DF0=DF0[1:com_top,]
-    DF=rbind(DF1,DF0)
+  
+  pname=BioM2_pathways_obj$PathwaysResult$id[1:10]
+  cor_matrix <- stats::cor(BioM2_pathways_obj$PathwaysMatrix[,pname])
+  upper_tri <- cor_matrix[upper.tri(cor_matrix)]
+  n <- nrow(cor_matrix)
+  upper_tri_matrix <- matrix(0, n, n)
+  upper_tri_matrix[upper.tri(upper_tri_matrix)] <- upper_tri
+  cor_matrix=upper_tri_matrix
+  colnames(cor_matrix)=colnames(BioM2_pathways_obj$PathwaysMatrix[,pname])
+  rownames(cor_matrix)=colnames(BioM2_pathways_obj$PathwaysMatrix[,pname])
+  df <- data.frame(from = character(n^2), to = character(n^2), Correlation = numeric(n^2))
+  count <- 1
+  for (i in 1:n) {
+    for (j in i:n) {
+      df[count, "from"] <- rownames(cor_matrix)[i]
+      df[count, "to"] <- rownames(cor_matrix)[j]
+      df[count, "Correlation"] <- cor_matrix[i, j]
+      count <- count + 1
+    }
   }
+  df$Correlation=ifelse(df$Correlation>0,df$Correlation,-df$Correlation)
+  DF0=df[df$Correlation> 0,]
+  DF0=DF0[DF0$Correlation>quantile(DF0$Correlation, probs = 0.75),]
+  map=result$vertices[which(!duplicated(result$vertices$value)),]
+  rownames(map)=map$value
+  DF0$from=map[DF0$from,]$label
+  DF0$to=map[DF0$to,]$label
+  DF0$same.conf=rep(0,nrow(DF0))
+  DF=rbind(DF1,DF0)
   result$edges=DF
-
+  
   fb.igra=graph_from_data_frame(result$edges[,1:2],directed = FALSE)
   V(fb.igra)$conf=result$vertices[V(fb.igra)$name, "value"]
   E(fb.igra)$same.conf=result$edges$same.conf
   E(fb.igra)$lty=ifelse(E(fb.igra)$same.conf == 1, 1, 2)
-
-  pic=ggplot(ggnetwork(fb.igra), aes(x = x, y = y, xend = xend, yend = yend)) +
+  
+  pic<-ggplot(ggnetwork(fb.igra), aes(x = x, y = y, xend = xend, yend = yend)) +
     geom_edges(aes(linetype= as.factor(same.conf)),
                #arrow = arrow(length = unit(6, "pt"), type = "closed") #if directed
                color = "grey50",
                curvature = 0.2,
                alpha=0.8,
                ncp=10,
-               linewidth=0.8
+               linewidth=0.7
     ) +
     geom_nodes(aes(color = conf),
-               size = 8,
+               size = 7,
                alpha=0.5) +
     scale_color_brewer("Pathways",
                        palette = 'Paired') +
@@ -1880,10 +1889,15 @@ PlotPathNet=function(data=NULL,FeatureAnno=NULL,pathlistDB=NULL,PathNames=NULL,a
     guides(linetype =  "none") +
     theme_blank()+
     geom_nodes(aes(color = conf),
-               size = 5)+labs(title = 'Network Diagram of TOP 10 Pathway-Level Features')+
+               size = 4)+labs(title = 'Network Diagram of TOP 10 Pathway-Level Features')+
     theme(legend.text = element_text(family = 'serif',face = 'bold.italic',color = 'grey15'),
           legend.title = element_text(family = 'serif',face = 'bold'),
-          plot.title = element_text(family = 'serif',face = 'bold'))
+          plot.title = element_text(family = 'serif',face = 'bold'))+
+    geom_mark_ellipse(
+      aes(fill=conf,label =conf),
+      alpha = 0.2,
+      show.legend = F
+    )+scale_fill_brewer(palette = 'Paired')+xlim(-0.05,1.05)+ylim(-0.05,1.05)
   return(pic)
-
+  
 }
