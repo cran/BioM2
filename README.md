@@ -19,11 +19,11 @@ We have implemented a biologically informed multi-stage machine learning framewo
 
 **Features of BioM2 in a nutshell**:   
   
-  1. Applicability for multiple omics data modalities (e.g. methylome, transcriptome). 
-2. Various biological stratification strategies.    
-3. Prioritizing outcome-associated functional patterns.   
-4. Personalized scoring based on biological stratified patterns.   
-5. Possibility for an extension to learning models of interest.   
+1. Phenotype prediction using whole-genome DNA methylation data and genome-wide gene expression data.
+2. Intrinsic ranking of outcome-associated functional patterns.    
+3. Functional patterns can be used for biological stratification on an individual subject basis.   
+4. Modularisation of functional patterns and subsequent network analysis of these modules.   
+5. Various choice of conventional machine learning models that can be integrated within the BioM2 framework.   
 
 ## :writing_hand: Authors
 
@@ -36,12 +36,12 @@ BioM2 has been uploaded to CRAN .
 ```
 install.packages('BioM2')
 ```
-You can install the latest release using the code below
+The latest release can be installed using the code provided below.
 ```
 install.packages("devtools")
 devtools::install_github("jkkomm/BioM2")
 ```
-BioM2 is based on the mlr3 package. If you want to use more learners, please install the mlr3extralearners package！
+BioM2 is built on the mlr3 package. To use additional learners, please install the mlr3extralearners package.
 ```
 remotes::install_github("mlr-org/mlr3extralearners@*release")
 ```
@@ -100,7 +100,7 @@ $ GO:0000023: chr [1:3] "2548" "2595" "8972"
 
 
 ## Prediction
-if you want to predict the phenotype.
+To predict the phenotype, follow these steps.
 ```
 library(mlr3verse)
 library(caret)
@@ -157,8 +157,8 @@ $ TotalMetric: Named num [1:3] 0.953 0.876 0.785
 
 ```
 ##  Biological interpretability
-If you want to explore which biological pathways have a potential impact on the disease/phenotype,
-please set the parameter ( target = 'pathways') .Show the association between each biological pathway used for prediction and the phenotype.
+To explore the potential impact of biological pathways on the disease/phenotype, set the parameter (target='pathways').
+Show the association between each biological pathway used for prediction and the phenotype.
 
 ```
 library(mlr3verse)
@@ -209,7 +209,7 @@ $ PathwaysResult:'data.frame':	2973 obs. of  5 variables:
 
 ## Pathways Module
 
-A pathway matrix can be obtained by using BioM2(, target = 'pathways'). The WGCNA-based method aggregates pathways with similar expression patterns into a module, and uses biological semantic information to assist in screening modules with high biological interpretability, and compares these biological pathway modules association with phenotype.
+A pathway matrix can be obtained by using BioM2(, target = 'pathways'). The WGCNA method aggregates pathways with similar expression patterns into a module, and uses biological semantic information to assist in screening modules with high biological interpretability, and compares these biological pathway modules association with phenotype.
 
 ### FindParaModule（）：Using Biological Semantic Information to Assist in Selecting Optimal Parameters
 ```
@@ -246,8 +246,8 @@ $ BestParameter: Named num [1:3] 8 10 0.4
 
 ```
 ### PathwaysModule（）: Identifying Illness-relevant  Modules with High Biological Interpretability
-We can use the optimal parameters provided by FindParaModule ( ), or provide them yourself. 
-Then we can get the illness-relevant modules with high biological interpretability.
+The optimal parameters can be provided by FindParaModule() or chosen by the user. 
+The modules relevant to the illness can then be obtained, with high biological interpretability.
 ```
 library(WGCNA)
 
@@ -467,10 +467,9 @@ PlotCorModule=(PathwaysModule_obj=Modules)
 
 ```
 ![Cor](https://github.com/jkkomm/img/blob/main/Cor.png)
-# Contribute
-Chen and Schwarz (2017) <arXiv:1712.0036v1>
-Horvath and Zhang (2005) <doi:10.2202/1544-6115.1128> 
-Langfelder and Horvath (2008) <doi:10.1186/1471-2105-9-559>
+# Citation
+- NIPS ML4H submission: Chen, J. and Schwarz, E., 2017. BioMM: Biologically-informed Multi-stage Machine learning for identification of epigenetic fingerprints. arXiv preprint arXiv:1712.00336.
+- Chen, Junfang, et al. "Association of a reproducible epigenetic risk profile for schizophrenia with brain methylation and function." JAMA psychiatry 77.6 (2020): 628-636.
 
 
 
