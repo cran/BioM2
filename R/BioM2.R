@@ -800,10 +800,10 @@ BioM2=function(TrainData=NULL,TestData=NULL,pathlistDB=NULL,FeatureAnno=NULL,res
       if(verbose)print('Step5: FeartureSelection-pathways')
       index=Stage2_FeartureSelection(Stage2_FeartureSelection_Method=Stage2_FeartureSelection_Method,data=train,
                                     label=trainDataList[[1]]$label,cutoff=cutoff2,preMode='probability',classifier =classifier,verbose=verbose,cores=cores)
-      corr=sapply(1:length(testDataList),function(x) stats::cor(test[[x]],testDataList[[x]]$label,method='pearson'))
-      newtest=do.call(cbind, test)
-      colnames(newtest)=names(testDataList)
+      newtest=do.call(cbind, test[index])
+      colnames(newtest)=names(testDataList)[index]
       newtest=cbind(label=testDataList[[1]]$label,newtest)
+      corr=stats::cor(newtest[,1],newtest[,-1])
       matrix_pathways=newtest
       rownames(matrix_pathways)=rownames(TestData)
       if(verbose)print(paste0('     |>min correlation of pathways=====>>>',round(min(corr),digits = 3),'......','max correlation of pathways===>>>',round(max(corr),digits = 3)))
