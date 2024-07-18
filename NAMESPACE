@@ -3,6 +3,7 @@
 export(AddUnmapped)
 export(BioM2)
 export(FindParaModule)
+export(HyBioM2)
 export(HybaseModel)
 export(PathwaysModule)
 export(PlotCorModule)

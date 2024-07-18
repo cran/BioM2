@@ -1,3 +1,8 @@
+Version 1.0.8
+=============
+-Added HyBioM2() function : BioM2 Hyperparametric Combination
+
+
 Version 1.0.7
 =============
 -Fix bugs[ VisMultiModule (),  PlotPathNet () ]
