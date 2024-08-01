@@ -1324,7 +1324,7 @@ HyBioM2=function(TrainData=NULL,pathlistDB=NULL,FeatureAnno=NULL,resampling=NULL
               accuracy_class0 <- sum(pre[testDataY == 0] == 0) / sum(testDataY == 0)
               Record[a,5]=(accuracy_class1 + accuracy_class0) / 2
               Record[a,1]=Unmapped_num[i]
-              Record[a,2]=ifelse(as.character(classifier_2),classifier_2,classifier_2$packages[[3]])
+              Record[a,2]=ifelse(is.character(classifier_2),classifier_2,classifier_2$packages[[3]])
               Record[a,4]=stats::cor(testDataY,result,method='pearson')
               Record[a,3]=ROCR::performance(ROCR::prediction(result,testDataY),'auc')@y.values[[1]]
               Record[a,6]=stage2_cutoff[ii]
