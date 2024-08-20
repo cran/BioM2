@@ -1,7 +1,12 @@
+Version 1.0.10
+=============
+- Fix a bug
+-Support changing learner parameters
+-Update the README file
+
 Version 1.0.9
 =============
 - Fix a bug in HyBioM2()
-
 
 
 Version 1.0.8
