@@ -1,6 +1,6 @@
 Package: BioM2
 Title: Biologically Explainable Machine Learning Framework
-Version: 1.0.10
+Version: 1.1.0
 Authors@R: c(
      person(given = "Shunjie",
                    family = "Zhang",
@@ -19,9 +19,9 @@ Imports: WGCNA, mlr3, CMplot, ggsci, ROCR, caret, ggplot2, ggpubr,
 Depends: R (>= 4.1.0)
 LazyData: true
 NeedsCompilation: no
-Packaged: 2024-08-20 07:38:30 UTC; Shedom
+Packaged: 2024-09-20 02:43:09 UTC; Shedom
 Author: Shunjie Zhang [aut, cre],
   Junfang Chen [aut]
 Maintainer: Shunjie Zhang <zhang.shunjie@qq.com>
 Repository: CRAN
-Date/Publication: 2024-08-20 08:00:01 UTC
+Date/Publication: 2024-09-20 12:10:21 UTC

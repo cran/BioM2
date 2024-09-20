@@ -1,8 +1,8 @@
-3d3ee26cf197e9c33d945ab7bc4642c8 *DESCRIPTION
+50bfe5ab28b71703599a7123c306bc9e *DESCRIPTION
 7f0b540fcd59d63a1e0ad0d9c4166ba2 *LICENSE
 d22b9100018d95f8c640842df0e3ea6d *NAMESPACE
-e847cb451f5d62d9ee0d4a2d321a1dfc *NEWS
-22a26896f0cad0b63a019106cf4ad4e9 *R/BioM2.R
+605d0a7f5c8ad19a612290c7d9e31d9a *NEWS
+d325af638989622cf9c9b1ecc221c72f *R/BioM2.R
 1aa0e5f279b6c45ef543324f869ad0a6 *R/data.R
 48f3ca90003c628b1fcd585448c8f43d *README.md
 92bd2907fb2a83adbd0b7def20410908 *data/GO2ALLEGS_BP.rda
@@ -28,7 +28,7 @@ e5457d54d2418c94603c5e3e3df858b7 *man/PathwaysModule.Rd
 7ef91bc1950e8a2563cd1559197ddf19 *man/PlotPathNet.Rd
 797c534326896f6fb40cc7076ddca962 *man/ShowModule.Rd
 0acbabe15dd541250ac9bf0a439d36bb *man/Stage1_FeartureSelection.Rd
-7fc48b98d68f02b1600b7193491ad1d0 *man/Stage2_FeartureSelection.Rd
+6e03fdbe9bbe044a19616bb97f99141e *man/Stage2_FeartureSelection.Rd
 cc9c293b11ac5f464ce361d849b17ad5 *man/TransAnno.Rd
 f43ba79c253e06b8c75f1a3b5b173e6c *man/TransData_Test.Rd
 3b400edaa8bb492e9145f5bd033301ab *man/VisMultiModule.Rd
