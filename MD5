@@ -1,8 +1,8 @@
-50bfe5ab28b71703599a7123c306bc9e *DESCRIPTION
+d83edd514935ad5bf00d7f81facd228a *DESCRIPTION
 7f0b540fcd59d63a1e0ad0d9c4166ba2 *LICENSE
 d22b9100018d95f8c640842df0e3ea6d *NAMESPACE
 605d0a7f5c8ad19a612290c7d9e31d9a *NEWS
-d325af638989622cf9c9b1ecc221c72f *R/BioM2.R
+3ce0e29e370e51ac65cda4943407506e *R/BioM2.R
 1aa0e5f279b6c45ef543324f869ad0a6 *R/data.R
 48f3ca90003c628b1fcd585448c8f43d *README.md
 92bd2907fb2a83adbd0b7def20410908 *data/GO2ALLEGS_BP.rda
@@ -13,7 +13,7 @@ a4734e8b914fb898e5c7cd647579130c *data/MethylData_Test.rda
 3f6c32cd0cc74b4bb8e720d3a4dde19f *data/TransAnno.rda
 2577e977d83c8ae766729ab487460fd5 *data/TransData_Test.rda
 6ebb177ae5826f839f42eefb1d9934c6 *man/AddUnmapped.Rd
-0a361594793b3c3087b7ff3e914c73e4 *man/BioM2.Rd
+977c6da67ce594bee19d1ad725272b6d *man/BioM2.Rd
 aed98a7a40cf2e23ac04cac03a7bfbb8 *man/FindParaModule.Rd
 3885064364fb859d13a57d7012c2b1ab *man/GO2ALLEGS_BP.Rd
 6ad0260688b61200f850833758e4b572 *man/GO_Ancestor.Rd
@@ -32,4 +32,4 @@ e5457d54d2418c94603c5e3e3df858b7 *man/PathwaysModule.Rd
 cc9c293b11ac5f464ce361d849b17ad5 *man/TransAnno.Rd
 f43ba79c253e06b8c75f1a3b5b173e6c *man/TransData_Test.Rd
 3b400edaa8bb492e9145f5bd033301ab *man/VisMultiModule.Rd
-15d4a0f4f8b06839bb2802a7bdcdc390 *man/baseModel.Rd
+ce617d79ad22e46c125475d3a5710885 *man/baseModel.Rd
