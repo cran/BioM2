@@ -1,4 +1,3 @@
-
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 # BioM2: Biologically-informed multi-stage machine learning for phenotype prediction using omics data <img src="https://github.com/jkkomm/img/blob/main/BioM2.png" align="right" height="180" />
@@ -38,10 +37,12 @@ install.packages('BioM2')
 ```
 The latest release can be installed using the code provided below.
 ```
+
 install.packages("devtools")
-devtools::install_github("jkkomm/BioM2")
+library(devtools)
+install_github("BioTransAI/BioM2")
 ```
-BioM2 is built on the mlr3 package. To use additional learners, please install the mlr3extralearners package.
+BioM2 is built on the mlr3 package. To use additional learners, please install the 'mlr3extralearners' package.
 ```
 remotes::install_github("mlr-org/mlr3extralearners@*release")
 ```
@@ -98,8 +99,7 @@ $ GO:0000023: chr [1:3] "2548" "2595" "8972"
   
   ```
 
-
-## Prediction
+## Phenotype prediction
 To predict the phenotype, follow these steps.
 ```
 library(mlr3verse)
@@ -107,12 +107,23 @@ library(caret)
 library(parallel)
 library(BioM2)
 
-result=BioM2 ( TrainData = data , TestData = NULL ,       ## If you only have one dataset
-                pathlistDB = pathlistDB ,                         ## ==>> [Pathway annotation data]
-                FeatureAnno = FeatureAnno ,                       ## ==>> [Feature annotation data]
-                classifier = 'liblinear' , nfolds = 5 ,           ## Choose your learner( use "lrns()" ) , currently only cross-validation is supported
-                Inner_CV = FALSE , inner_folds=10 ,               ## Whether to use nested resampling 
-                cores = 5                                         ## Parallel support
+# Additional learners, including some learners which are not yet to be considered stable or which are not available on CRAN,
+# are connected via the mlr3extralearners package. (https://mlr-org.com/learners.html)
+
+remotes::install_github("mlr-org/mlr3extralearners@*release") ##(install 'mlr3extralearners')
+install.packages('LiblineaR')
+
+result=BioM2 (  TrainData = data , TestData = NULL ,                               ## If you only have one dataset
+                pathlistDB = pathlistDB ,                                          ## ==>> [Pathway annotation data]
+                FeatureAnno = FeatureAnno ,                                        ## ==>> [Feature annotation data]
+                classifier = 'liblinear' , nfolds = 5 ,                            ## Choose your learner( use "lrns()" ) , currently only cross-validation is supported
+                Inner_CV = FALSE , inner_folds=10 ,                                ## Whether to use nested resampling
+                Stage1_FeartureSelection_Method = "cor", cutoff=0,                 ## Stage-1 feature selection method and cutoff
+                Stage2_FeartureSelection_Method = "RemoveHighcor",cutoff2 = 0.80,  ## Stage-2 feature selection method and cutoff
+                Add_FeartureSelection_Method = "wilcox.test", Unmapped_num = 0,    ## Unmapped feature selection method and cutoff
+                classifier2=NULL,                                                  ## Learner for stage 2 prediction(if classifier2==NULL,then it is the same as the learner in stage 1.)
+                target='predict',                                                  ## Phenotype prediction
+                cores = 5                                                          ## Parallel support
 )
 ...(More Detail)
 
@@ -156,6 +167,59 @@ $ TotalMetric: Named num [1:3] 0.953 0.876 0.785
 ..- attr(*, "names")= chr [1:3] "AUC" "ACC" "PCCs"
 
 ```
+
+## Hyparameters optimization
+Hyperparameter selection for BioM2 using HyBioM2() to improve prediction performance
+```
+library(mlr3verse)
+library(parallel)
+library(caret)
+library(BioM2)
+
+# Selection of stage-1 basemodels
+classifier1=c('liblinear','svm','ranger')
+
+
+# Stage-1 feature_selection
+stage1_cutoff=c(0.3,0.5)
+
+
+#Number of unmapped features
+Unmapped_num=c(5,10)
+
+
+# Stage-2 feature_selection
+stage2_cutoff=c(0.8,1.0)
+
+# Selection of stage-2 basemodels(The default is the same as the stage-1)
+classifier2=NULL
+
+# A data frame contains hyperparameter results
+result=HyBioM2(TrainData=data,pathlistDB=pathlistDB,FeatureAnno=FeatureAnno,resampling=NULL,nfolds=2,classifier=classifier1,
+           PathwaySizeUp=200,PathwaySizeDown=10,MinfeatureNum_pathways=10,
+           Add_FeartureSelection_Method='wilcox.test',Unmapped_num=Unmapped_num,
+           Inner_CV=T,inner_folds=10,
+           Stage1_FeartureSelection_Method='cor',stage1_cutoff=stage1_cutoff,
+           Stage2_FeartureSelection_Method='RemoveHighcor',stage2_cutoff=stage2_cutoff,
+           classifier2=NULL,cores=20,verbose=TRUE)
+
+
+# View the optimal hyperparameter combination
+head(result[order(result$AUC,decreasing = T),c(1,3:6,8)])
+
+#  stage1_learner stage1_cutoff stage2_cutoff Unmapped_num        AUC         PCC
+#         ranger           0.5             1             5  0.8243945   0.5422997
+#         ranger           0.3             1             5  0.8192042   0.5445359
+#            svm           0.3             1             5  0.8066609   0.5313999
+#            svm           0.3             1            10  0.8066609   0.5327538
+#            svm           0.5             1            10  0.8066609   0.5285186
+#            svm           0.5             1             5  0.8053633   0.5269829
+
+
+
+
+
+```
 ##  Biological interpretability
 To explore the potential impact of biological pathways on the disease/phenotype, set the parameter (target='pathways').
 Show the association between each biological pathway used for prediction and the phenotype.
@@ -166,12 +230,16 @@ library(caret)
 library(parallel)
 library(BioM2)
 
-result=BioM2 ( TrainData = data , TestData = NULL ,              
-                pathlistDB = pathlistDB ,                         
-                FeatureAnno = FeatureAnno ,                       
-                classifier = 'liblinear' , nfolds = 5 ,          
-                target='pathways',                           ##==>>  [ target = 'pathways']
-                cores = 5                                        
+result=BioM2 (  TrainData = data , TestData = NULL ,                               
+                pathlistDB = pathlistDB ,                                          
+                FeatureAnno = FeatureAnno ,                                        
+                classifier = 'liblinear' , nfolds = 5 ,                            
+                Inner_CV = FALSE , inner_folds=10 ,                                
+                Stage1_FeartureSelection_Method = "cor", cutoff=0,                 
+                Stage2_FeartureSelection_Method = "RemoveHighcor",cutoff2 = 0.80,    
+                classifier2=NULL,                                                  
+                target='pathways',            ##==>>  [ target = 'pathways']
+                cores = 5                                                          
 )
 
 [1] "-----------------------------------------------------------"
@@ -207,7 +275,7 @@ $ PathwaysResult:'data.frame':	2973 obs. of  5 variables:
 
 ```
 
-## Pathways Module
+## Pathway Modules
 
 A pathway matrix can be obtained by using BioM2(, target = 'pathways'). The WGCNA method aggregates pathways with similar expression patterns into a module, and uses biological semantic information to assist in screening modules with high biological interpretability, and compares these biological pathway modules association with phenotype.
 
@@ -218,19 +286,24 @@ library(caret)
 library(parallel)
 library(BioM2)
 
-result=BioM2 ( TrainData = data , TestData = NULL ,              
-                pathlistDB = pathlistDB ,                         
-                FeatureAnno = FeatureAnno ,                       
-                classifier = 'liblinear' , nfolds = 5 ,          
-                target='pathways',                           ##==>>  [ target = 'pathways']
-                cores = 5                                        
-)
 
+result=BioM2 (  TrainData = data , TestData = NULL ,                               
+                pathlistDB = pathlistDB ,                                          
+                FeatureAnno = FeatureAnno ,                                        
+                classifier = 'liblinear' , nfolds = 5 ,                            
+                Inner_CV = FALSE , inner_folds=10 ,                                
+                Stage1_FeartureSelection_Method = "cor", cutoff=0,                 
+                Stage2_FeartureSelection_Method = "RemoveHighcor",cutoff2 = 0.80,  
+                classifier2=NULL,                                                  
+                target='pathways',                ##==>>  [ target = 'pathways']
+                cores = 5                                                          
+)
 Matrix=result$PathwaysMatrix
 
 library(WGCNA)
 
-Para=FindParaModule(pathways_matrix = Matrix, minModuleSize = c(10,15,20,25), mergeCutHeight=c(0.1,0.15,0.2,0.25,0.3,0.35,0.4))
+Para=FindParaModule(pathways_matrix = Matrix, control_label=0,minModuleSize =seq(5,20,5),
+                     mergeCutHeight=seq(0.1,0.4,0.05),power=NULL)
 
 > str(Para)
 List of 2
@@ -251,7 +324,8 @@ The modules relevant to the illness can then be obtained, with high biological i
 ```
 library(WGCNA)
 
-Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 10, mergeCutHeight = 0.4, cutoff = 70)
+Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 10, mergeCutHeight = 0.4,
+                        cutoff = 70,p.adjust.method='none',power=NULL)
 
 > str(Modules)
 List of 4
@@ -307,7 +381,7 @@ $ ME34:'data.frame':	8 obs. of  4 variables:
 ## Visualization
 - PlotPathFearture() : Visualisation of significant pathway-level features
 - PlotPathInner() : Visualisation Original features that make up the pathway
-- PlotPathNet() : Network diagram of pathways-level features
+- PlotPathNet() : Network diagram of pathway-level features
 - VisMultiModule() : Visualisation of the results of the analysis of the pathway modules
 - PlotCorModule() : Correlalogram for Illness-relevant Modules
 
@@ -320,14 +394,6 @@ $ ME34:'data.frame':	8 obs. of  4 variables:
 library(ggplot2)
 library(viridis)
 
-
-result=BioM2 ( TrainData = data , TestData = NULL ,              
-                pathlistDB = pathlistDB ,                         
-                FeatureAnno = FeatureAnno ,                       
-                classifier = 'liblinear' , nfolds = 5 ,          
-                target='pathways',                           ##==>>  [ target = 'pathways']
-                cores = 5                                        
-)
 
 PlotPathFearture(BioM2_pathways_obj=result , pathlistDB = pathlistDB)
 ```
@@ -354,20 +420,13 @@ PlotPathInner(data=TrainData,pathlistDB=pathlistDB,FeatureAnno=FeatureAnno,
 
 
 ### PlotPathNet ()
-**Network diagram of pathways-level features**
+**Network diagram of pathway-level features**
 ```
 #Load the required R packages
 library(igraph)
 library(ggnetwork)
 library(ggplot2)
 
-result=BioM2 ( TrainData = data , TestData = NULL ,              
-                pathlistDB = pathlistDB ,                         
-                FeatureAnno = FeatureAnno ,                       
-                classifier = 'liblinear' , nfolds = 5 ,          
-                target='pathways',                           ##==>>  [ target = 'pathways']
-                cores = 5                                        
-)
 
 #Select the top 10 most significant pathways
 PathNames=result$PathwaysResult$id[1:10]
@@ -398,14 +457,6 @@ library(jiebaR)
 library("htmlwidgets")
 
 
-result=BioM2 ( TrainData = data , TestData = NULL ,              
-                pathlistDB = pathlistDB ,                         
-                FeatureAnno = FeatureAnno ,                       
-                classifier = 'liblinear' , nfolds = 5 ,          
-                target='pathways',                           ##==>>  [ target = 'pathways']
-                cores = 5                                        
-)
-
 VisMultiModule(BioM2_pathways_obj = result)
 ```
 ![PathwaysResult](https://github.com/jkkomm/img/blob/main/CManhan2.png)
@@ -416,12 +467,13 @@ VisMultiModule(BioM2_pathways_obj = result)
 Visualize the process of selecting optimal parameters based on biological terms.
 ```
 Matrix=result$PathwaysMatrix
-Para=FindParaModule(pathways_matrix = Matrix, minModuleSize = c(6,7,8), mergeCutHeight=c(0.2,0.25,0.3,0.35,0.4,0.45,0.5))
+Para=FindParaModule(pathways_matrix = Matrix, , control_label = 0,minModuleSize = c(6,7,8),
+                                                 mergeCutHeight=seq(0.2,0.5,0.05),power=NULL)
 
 VisMultiModule(FindParaModule_obj=Para)
 
 ```
-![FindParaModule](https://github.com/jkkomm/img/blob/main/FindPara.png)
+![FindParaModule](https://github.com/jkkomm/img/blob/main/Figure%205a(1).jpg)
 
 
 
@@ -429,30 +481,92 @@ VisMultiModule(FindParaModule_obj=Para)
 Each point represents a path, and points of the same color belong to the same illness-relevant module
 ```
 Matrix=result$PathwaysMatrix
-Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 6, mergeCutHeight = 0.3, cutoff = 70)
+Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 6, mergeCutHeight = 0.3,
+                         cutoff = 70,p.adjust.method='none',power=NULL)
 
 VisMultiModule(PathwaysModule_obj=Modules)
 ```
-![DE_PathwaysModule](https://github.com/jkkomm/img/blob/main/UMAP.png)
+![DE_PathwaysModule](https://github.com/jkkomm/img/blob/main/Figure%205b(1).jpg)
 
 Violin plot showing statistics for the pathway modules
 ```
-Matrix=result$PathwaysMatrix
-Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 6, mergeCutHeight = 0.3, cutoff = 70)
+# xxx -> module index
+VisMultiModule(PathwaysModule_obj=Modules,volin=TRUE,control_label=0,module= xxx )
 
-VisMultiModule(PathwaysModule_obj=Modules,volin=TURE,control_label=0,module=c(14,15,28,4)))
+
+
+ ##(Setting up a visual module index)
+modules=c(14,15,28,4)
+
+img=list()
+for(i in 1:length(modules)){
+  pic=VisMultiModule(PathwaysModule_obj=Modules,volin=TRUE,control_label=0,module=modules[i])
+  img[[i]]=pic
+}
+d=1
+img[[1]]+theme(plot.margin = unit(c(d,d,d,d), "cm"))+
+  img[[2]]+theme(plot.margin = unit(c(d,d,d,d), "cm"))+
+  img[[3]]+theme(plot.margin = unit(c(d,d,d,d), "cm"))+
+  img[[4]]+theme(plot.margin = unit(c(d,d,d,d), "cm"))
 ```
-![Violin](https://github.com/jkkomm/img/blob/main/boxplot.png)
+![Violin](https://github.com/jkkomm/img/blob/main/Figure%208a(1).jpg)
 
 **VisMultiModule ( , ShowModule_obj )  ：**
 Summarize the biological information of the pathways in the module with a wordcloud.
 ```
-Matrix=result$PathwaysMatrix
-Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 6, mergeCutHeight = 0.3, cutoff = 70)
-
-ModulesInner = ShowModule(Modules,c(14,15,28,4))
+# xxx -> module index
+ShowModule(Modules,xxx)
 
 VisMultiModule(ShowModule_obj=ModulesInner)
+
+
+ ##(Setting up a visual module index)
+modules=c(14,15,28,4)
+
+output=paste0('Module',modules,'_WordCloud.png')
+for(i in 1:length(modules)){
+  ModulesInner = ShowModule(Modules,modules[i])
+  my_graph=VisMultiModule(ShowModule_obj=ModulesInner)
+  saveWidget(my_graph,'tmp.html',selfcontained = F)
+  webshot('tmp.html',output[i])
+}
+library(magick)
+ff=list.files(pattern = 'png')
+gg=do.call(cbind,lapply(1:4,function(x) image_read(ff[x])))
+library(patchwork)
+library(ggthemes)
+ff2=gsub('_WordCloud.png','',ff)
+ff2=gsub('ME','Module',ff2)
+ba='#FFFFFF'
+d=2
+image_ggplot(gg[[1]])+labs(title = ff2[1])+
+  theme(text = element_text(family = "serif", size = 10, color = "black",face='bold'),
+        panel.border = element_rect(color = "black", fill = NA, size = 2),
+        plot.margin = unit(c(d, d, d, d), "mm"),
+        panel.background = element_rect(fill = ba, color = ba),
+        plot.background = element_rect(fill = ba, color = ba))+
+  image_ggplot(gg[[2]])+labs(title = ff2[2])+
+  theme(text = element_text(family = "serif", size = 10, color = "black",face='bold'),
+        panel.border = element_rect(color = "black", fill = NA, size = 2),
+        plot.margin = unit(c(d, d, d, d), "mm"),
+        panel.background = element_rect(fill = ba, color = ba),
+        plot.background = element_rect(fill = ba, color = ba))+
+  image_ggplot(gg[[3]])+labs(title = ff2[3])+
+  theme(text = element_text(family = "serif", size = 10, color = "black",face='bold'),
+        panel.border = element_rect(color = "black", fill = NA, size = 2),
+        plot.margin = unit(c(d, d, d, d), "mm"),
+        panel.background = element_rect(fill = ba, color = ba),
+        plot.background = element_rect(fill = ba, color = ba))+
+  image_ggplot(gg[[4]])+labs(title = ff2[4])+
+  theme(text = element_text(family = "serif", size = 10, color = "black",face='bold'),
+        panel.border = element_rect(color = "black", fill = NA, size = 2),
+        plot.margin = unit(c(d, d, d, d), "mm"),
+        panel.background = element_rect(fill = ba, color = ba),
+        plot.background = element_rect(fill = ba, color = ba))
+
+
+
+
 
 ```
 ![SM25](https://github.com/jkkomm/img/blob/main/WordCloud.png)
@@ -460,16 +574,17 @@ VisMultiModule(ShowModule_obj=ModulesInner)
 ### PlotCorModule()
 **Correlalogram for illness-relevant modules**
 ```
-Matrix=result$PathwaysMatrix
-Modules=PathwaysModule(pathways_matrix = Matrix , control_label = 0, minModuleSize = 6, mergeCutHeight = 0.3, cutoff = 70)
-
-PlotCorModule=(PathwaysModule_obj=Modules)
+PlotCorModule(PathwaysModule_obj=Modules)
 
 ```
-![Cor](https://github.com/jkkomm/img/blob/main/Cor.png)
+![Cor](https://github.com/jkkomm/img/blob/main/Figure%206a(1).jpg)
 # Citation
 - NIPS ML4H submission: Chen, J. and Schwarz, E., 2017. BioMM: Biologically-informed Multi-stage Machine learning for identification of epigenetic fingerprints. arXiv preprint arXiv:1712.00336.
 - Chen, Junfang, et al. "Association of a reproducible epigenetic risk profile for schizophrenia with brain methylation and function." JAMA psychiatry 77.6 (2020): 628-636.
+
+
+
+
 
 
 

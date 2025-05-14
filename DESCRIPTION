@@ -1,6 +1,6 @@
 Package: BioM2
 Title: Biologically Explainable Machine Learning Framework
-Version: 1.1.1
+Version: 1.1.2
 Authors@R: c(
      person(given = "Shunjie",
                    family = "Zhang",
@@ -14,14 +14,14 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.2.3
 Imports: WGCNA, mlr3, CMplot, ggsci, ROCR, caret, ggplot2, ggpubr,
-        viridis, ggthemes, ggstatsplot, htmlwidgets, jiebaR, mlr3verse,
+        viridis, ggthemes, ggstatsplot, htmlwidgets, mlr3verse,
         parallel, uwot, webshot, wordcloud2,ggforce, igraph, ggnetwork
 Depends: R (>= 4.1.0)
 LazyData: true
 NeedsCompilation: no
-Packaged: 2025-02-19 08:53:32 UTC; Shedom
+Packaged: 2025-05-14 09:33:49 UTC; Shedom
 Author: Shunjie Zhang [aut, cre],
   Junfang Chen [aut]
 Maintainer: Shunjie Zhang <zhang.shunjie@qq.com>
 Repository: CRAN
-Date/Publication: 2025-02-19 09:30:08 UTC
+Date/Publication: 2025-05-14 11:50:03 UTC

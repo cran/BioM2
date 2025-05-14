@@ -1640,7 +1640,6 @@ ShowModule=function(obj=NULL,ID_Module=NULL,exact=TRUE,ancestor_anno=NULL){
 #' @export
 #' @import ggplot2
 #' @import htmlwidgets
-#' @import jiebaR
 #' @import ggsci
 #' @import CMplot
 #' @import uwot
